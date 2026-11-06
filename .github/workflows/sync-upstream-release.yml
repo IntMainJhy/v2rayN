@@ -1,0 +1,40 @@
+name: Sync official stable release
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/sync-upstream-release.yml'
+      - '.github/scripts/sync-upstream-release.py'
+      - '.github/scripts/test_sync_upstream_release.py'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: sync-official-stable-release
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'IntMainJhy/v2rayN'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify sync behavior
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Check stable release, open PR and report conflicts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 .github/scripts/sync-upstream-release.py
